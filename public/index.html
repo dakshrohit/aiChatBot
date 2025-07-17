@@ -1,0 +1,227 @@
+
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>WSP ChatBot</title>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.3.1/css/bootstrap.min.css"
+    />
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+      body {
+        background-color: #0c1f32;
+        color: aquamarine;
+      }
+      #response {
+        margin-top: 20px;
+        padding: 10px;
+        min-height: 50px;
+        color: aquamarine;
+      }
+      #response h3,
+      #response strong,
+      #response ul,
+      #response li {
+        color: aquamarine;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h2>Free ChatBot</h2>
+      <div class="form-group">
+        <input
+          type="text"
+          class="form-control"
+          id="userInput"
+          placeholder="Enter your question"
+        />
+      </div>
+      <button class="btn btn-success" onclick="sendMessage()">Ask!</button>
+      <div id="response"></div>
+    </div>
+
+    <script>
+      async function sendMessage() {
+        const input = document.getElementById("userInput").value;
+        const responseDiv = document.getElementById("response");
+
+        if (!input) {
+          responseDiv.innerHTML = "Please enter a message.";
+          return;
+        }
+
+        responseDiv.innerHTML = "Thinking...";
+
+        try {
+          const response = await fetch("/api/chat", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              messages: [{ role: "user", content: input }], // 👈 no model
+            }),
+          });
+
+          if (!response.ok) {
+            throw new Error("Failed to get response from server.");
+          }
+
+          const data = await response.json();
+          const reply = data.choices?.[0]?.message?.content || "No response";
+          responseDiv.innerHTML = marked.parse(reply);
+        } catch (error) {
+          responseDiv.innerHTML = "Error: " + error.message;
+        }
+      }
+    </script>
+  </body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!-- <!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>WSP ChatBot</title>
+		<link
+			rel="stylesheet"
+			href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.3.1/css/bootstrap.min.css" />
+		<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+		<style>
+			#response {
+				margin-top: 20px;
+				padding: 10px;
+				min-height: 50px;
+                color: aquamarine;
+			}
+			#response h3 {
+				color: #808080;
+				font-size: 1.2em;
+                color: aquamarine;
+			}
+			#response strong {
+				color: #d9534f;
+                color: aquamarine;
+			}
+			#response ul {
+				padding-left: 20px;
+                color: aquamarine;
+			}
+			#response li {
+				margin-bottom: 5px;
+                color: aquamarine;
+			}
+		</style>
+	</head>
+	<body style="background-color: #0c1f32; color: aquamarine;">
+		<div class="container" ">
+			<h2>Free ChatBot</h2>
+			<div class="form-group">
+				<input
+					type="text"
+					class="form-control"
+					id="userInput"
+					placeholder="Enter your question" />
+			</div>
+			<button class="btn btn-success" onclick="sendMessage()">Ask!</button>
+			<div id="response"></div>
+		</div>
+		<script>
+			async function sendMessage() {
+  const input = document.getElementById('userInput').value;
+  const responseDiv = document.getElementById('response');
+  
+  if (!input) {
+    responseDiv.innerHTML = 'Please enter a message.';
+    return;
+  }
+  
+  responseDiv.innerHTML = ''; // Clear previous response
+  let fullText = ''; // Store progressively received text
+
+  try {
+    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        Authorization: 'Bearer <apikey>',
+        'HTTP-Referer': 'https://www.sitename.com',
+        'X-Title': 'SiteName',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+       // model: 'mistralai/mistral-small-3.2-24b-instruct:free',
+               model: 'deepseek/deepseek-chat-v3-0324:free',
+
+        messages: [{ role: 'user', content: input }],
+        stream: true, // Enable streaming
+      }),
+    });
+
+    if (!response.body) {
+      responseDiv.innerHTML = 'No response body.';
+      return;
+    }
+    
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder('utf-8');
+    let done = false;
+    
+    while (!done) {
+      const { value, done: doneReading } = await reader.read();
+      done = doneReading;
+      if (value) {
+        const chunkText = decoder.decode(value, { stream: true });
+        // OpenRouter sends SSE chunks starting with "data: "
+        // We process each chunk line by line
+        const lines = chunkText.split(/\r?\n/);
+        lines.forEach((line) => {
+          if (line.startsWith('data:')) {
+            const dataStr = line.slice('data:'.length).trim();
+            if (dataStr === '[DONE]') {
+              done = true;
+              return;
+            }
+            try {
+              const dataObj = JSON.parse(dataStr);
+              // Append new content to fullText
+              const delta = dataObj.choices?.[0]?.delta?.content || '';
+              fullText += delta;
+              responseDiv.innerHTML = marked.parse(fullText);
+            } catch (err) {
+              // JSON parsing error, ignore or log
+              console.error('JSON parse error:', err);
+            }
+          }
+        });
+      }
+    }
+
+  } catch (error) {
+    responseDiv.innerHTML = 'Error: ' + error.message;
+  }
+}
+
+		</script>
+	</body>
+</html> -->
